@@ -1,0 +1,180 @@
+apiVersion: gloo.solo.io/v1
+kind: Upstream
+metadata:
+  name: echo-server
+  namespace: gloo-system
+spec:
+  useHttp2: true
+  static:
+    hosts:
+    - addr: echo-server
+      port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: echo-server
+  name: echo-server
+  namespace: gloo-system
+spec:
+  selector:
+    matchLabels:
+      app: echo-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: echo-server
+    spec:
+      containers:
+      - image: jmalloc/echo-server
+        name: echo-server
+        env:
+        - name: LOG_HTTP_HEADERS
+          value: "true"
+        - name: LOG_HTTP_BODY
+          value: "true"
+        ports:
+        - containerPort: 8080
+          name: grpc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-server
+  namespace: gloo-system
+  labels:
+    service: echo-server
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+  selector:
+    app: echo-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: sample-tap-server-http
+  name: sample-tap-server-http
+  namespace: gloo-system
+spec:
+  selector:
+    matchLabels:
+      app: sample-tap-server-http
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sample-tap-server-http
+    spec:
+      containers:
+      - image: gcr.io/solo-test-236622/sample-tap-server-http:0.0.1
+        name: sample-tap-server-http
+        # args: ["-text='Hello World!'"]
+        ports:
+        - containerPort: 9001
+          name: grpc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-tap-server-http
+  namespace: gloo-system
+  labels:
+    service: sample-tap-server-http
+spec:
+  ports:
+  - port: 9001
+    protocol: TCP
+  selector:
+    app: sample-tap-server-http
+---
+apiVersion: gloo.solo.io/v1
+kind: Upstream
+metadata:
+  name: sample-tap-server-http
+  namespace: gloo-system
+spec:
+  useHttp2: true
+  static:
+    hosts:
+    - addr: sample-tap-server-http
+      port: 9001
+---
+apiVersion: gloo.solo.io/v1
+kind: Upstream
+metadata:
+  name: postman-echo
+  namespace: gloo-system
+spec:
+  static:
+    hosts:
+    - addr: postman-echo.com
+      port: 80
+---
+apiVersion: gateway.solo.io/v1
+kind: VirtualService
+metadata:
+  name: headers-to-body
+  namespace: gloo-system
+spec:
+  virtualHost:
+    domains:
+    - '*'
+    routes:
+    - matchers:
+       - prefix: /
+      routeAction:
+        single:
+          upstream:
+            name: postman-echo
+            namespace: gloo-system
+      options:
+        autoHostRewrite: true
+---
+apiVersion: gateway.solo.io/v1
+kind: Gateway
+metadata:
+  name: gateway-proxy
+  namespace: gloo-system
+spec:
+  bindAddress: '::'
+  bindPort: 8080
+  httpGateway:
+    options: {}
+      # tap:
+      #   staticConfig:
+      #     outputConfig:
+      #       sinks:
+      #       - grpcService:
+      #           tapServer:
+      #             name: "sample-tap-server-http"
+      #             namespace: "gloo-system"
+      #           # envoyGrpc:
+      #           #   clusterName: "sample-tap-server-http"
+---
+apiVersion: gloo.solo.io/v1
+kind: Settings
+metadata:
+  labels:
+    app: gloo
+    gloo: settings
+  name: default
+  namespace: gloo-system
+spec:
+  tap:
+    staticConfig:
+      outputConfig:
+        sinks:
+        - httpService:
+            tapServer:
+              name: echo-server
+              namespace: gloo-system
+            timeout: '20s'
+        # - grpcService:
+        #     tapServer:
+        #       name: "sample-tap-server-http"
+        #       namespace: "gloo-system"
