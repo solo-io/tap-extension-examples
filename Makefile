@@ -22,9 +22,13 @@ run-sample-tap-server-http-docker: sample-tap-server-http-docker
 run-sample-tap-server-grpc-docker: sample-tap-server-grpc-docker
 	docker run --rm -it -p 9001:8080 gcr.io/solo-test-236622/sample-tap-server-grpc:0.0.2
 
-push-docker-image:
-	docker push ${OUTPUT_IMAGE}
+push-docker-image-http: sample-tap-server-http-docker
+	docker push ${OUTPUT_IMAGE_HTTP}
+
+push-docker-image-grpc: sample-tap-server-grpc-docker
+	docker push ${OUTPUT_IMAGE_GRPC}
+
+push-docker-images: push-docker-image-http push-docker-image-grpc
 
 print-%:
 	@echo $($*)
-
