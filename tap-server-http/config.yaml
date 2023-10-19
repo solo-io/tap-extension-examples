@@ -153,8 +153,6 @@ spec:
       #           tapServer:
       #             name: "sample-tap-server-http"
       #             namespace: "gloo-system"
-      #           # envoyGrpc:
-      #           #   clusterName: "sample-tap-server-http"
 ---
 apiVersion: gloo.solo.io/v1
 kind: Settings

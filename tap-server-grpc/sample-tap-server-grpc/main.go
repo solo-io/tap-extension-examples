@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -13,7 +14,7 @@ import (
 )
 
 var (
-	GrpcPort = flag.String("port", ":9001", "port")
+	GrpcPort = flag.Int("p", 8080, "port")
 )
 
 type server struct{}
@@ -45,12 +46,14 @@ func (s *server) ReportTap(srv sts.TapService_ReportTapServer) error {
 }
 
 func main() {
+	flag.Parse()
 	sopts := []grpc.ServerOption{grpc.MaxConcurrentStreams(1000)}
 	s := grpc.NewServer(sopts...)
 	sts.RegisterTapServiceServer(s, &server{})
 
-	log.Printf("Listening on %s\n", *GrpcPort)
-	listener, err := net.Listen("tcp", *GrpcPort)
+	address := fmt.Sprintf(":%d", *GrpcPort)
+	log.Printf("Listening on %s\n", address)
+	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		log.Printf("error is: %s", err.Error())
 	}
