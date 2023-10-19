@@ -71,11 +71,11 @@ spec:
         app: sample-tap-server-grpc
     spec:
       containers:
-      - image: gcr.io/solo-test-236622/sample-tap-server-grpc:0.0.1
+      - image: gcr.io/solo-test-236622/sample-tap-server-grpc:0.0.2
         name: sample-tap-server-grpc
         # args: ["-text='Hello World!'"]
         ports:
-        - containerPort: 9001
+        - containerPort: 8080
           name: grpc
 ---
 apiVersion: v1
@@ -87,7 +87,7 @@ metadata:
     service: sample-tap-server-grpc
 spec:
   ports:
-  - port: 9001
+  - port: 8080
     protocol: TCP
   selector:
     app: sample-tap-server-grpc
@@ -102,7 +102,7 @@ spec:
   static:
     hosts:
     - addr: sample-tap-server-grpc
-      port: 9001
+      port: 8080
 ---
 apiVersion: gloo.solo.io/v1
 kind: Upstream

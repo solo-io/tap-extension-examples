@@ -71,7 +71,7 @@ spec:
         app: sample-tap-server-http
     spec:
       containers:
-      - image: gcr.io/solo-test-236622/sample-tap-server-http:0.0.1
+      - image: gcr.io/solo-test-236622/sample-tap-server-http:0.0.2
         name: sample-tap-server-http
         # args: ["-text='Hello World!'"]
         ports:
