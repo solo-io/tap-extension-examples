@@ -12,8 +12,8 @@ import (
 	tapv3 "github.com/envoyproxy/go-control-plane/envoy/data/tap/v3"
 	"google.golang.org/protobuf/proto"
 
-	"sample-tap-server-http/data_scrubber"
-	sts "sample-tap-server-http/tap_grpc"
+	"github.com/solo-io/tap-extension-examples/tap-server-http/data_scrubber"
+	tap_service "github.com/solo-io/tap-extension-examples/tap-server-http/tap_grpc"
 )
 
 var (
@@ -23,7 +23,7 @@ var (
 
 type server struct{}
 
-func scrubTapRequest(tapRequest *sts.TapRequest) {
+func scrubTapRequest(tapRequest *tap_service.TapRequest) {
 	scrubHeader := func(header *corev3.HeaderValue) {
 		fmt.Printf("\theaders are: %s:%s\n", header.GetKey(), header.GetValue())
 		header.Value = dataScrubber.ScrubDataString(header.Value)
@@ -58,7 +58,7 @@ func main() {
 			log.Printf("Error reading request traceData: %s", err.Error())
 			return
 		}
-		tapRequest := &sts.TapRequest{}
+		tapRequest := &tap_service.TapRequest{}
 		proto.Unmarshal(traceData, tapRequest)
 		scrubTapRequest(tapRequest)
 		tapRequestJson, err := json.MarshalIndent(tapRequest, "", "  ")
