@@ -75,7 +75,7 @@ spec:
         name: sample-tap-server-http
         # args: ["-text='Hello World!'"]
         ports:
-        - containerPort: 9001
+        - containerPort: 8080
           name: grpc
 ---
 apiVersion: v1
@@ -87,7 +87,7 @@ metadata:
     service: sample-tap-server-http
 spec:
   ports:
-  - port: 9001
+  - port: 8080
     protocol: TCP
   selector:
     app: sample-tap-server-http
@@ -98,11 +98,11 @@ metadata:
   name: sample-tap-server-http
   namespace: gloo-system
 spec:
-  useHttp2: true
+  # useHttp2: true
   static:
     hosts:
     - addr: sample-tap-server-http
-      port: 9001
+      port: 8080
 ---
 apiVersion: gloo.solo.io/v1
 kind: Upstream
@@ -171,10 +171,7 @@ spec:
         sinks:
         - httpService:
             tapServer:
-              name: echo-server
+              # name: echo-server
+              name: sample-tap-server-http
               namespace: gloo-system
             timeout: '20s'
-        # - grpcService:
-        #     tapServer:
-        #       name: "sample-tap-server-http"
-        #       namespace: "gloo-system"

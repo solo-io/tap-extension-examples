@@ -3,56 +3,75 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"io"
+	"fmt"
+	"io/ioutil"
 	"log"
-	"net"
+	"net/http"
 
-	sts "sample-tap-server/tap_grpc"
+	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	tapv3 "github.com/envoyproxy/go-control-plane/envoy/data/tap/v3"
+	"google.golang.org/protobuf/proto"
 
-	"google.golang.org/grpc"
+	"sample-tap-server-http/data_scrubber"
+	sts "sample-tap-server-http/tap_grpc"
 )
 
 var (
-	GrpcPort = flag.String("port", ":9001", "port")
+	HttpPort     = flag.Int("p", 8080, "port")
+	dataScrubber data_scrubber.DataScrubber
 )
 
 type server struct{}
 
-func (s *server) ReportTap(srv sts.TapService_ReportTapServer) error {
-	log.Printf("Starting to listen for requests")
-	ctx := srv.Context()
-	for {
-		select {
-		case <-ctx.Done():
-			log.Printf("End of stream\n")
-			return ctx.Err()
-		default:
-		}
-
-		req, err := srv.Recv()
-		if err == io.EOF {
-			// Client has closed the stream
-			return nil
-		}
-		log.Printf("got a request!")
-		req_json, err := json.Marshal(req)
-		if err != nil {
-			log.Printf("Unable to convert message to json, raw body is %#v\n", req.GetTraceData())
-		} else {
-			log.Printf("request contents are: %s\n", req_json)
-		}
+func scrubTapRequest(tapRequest *sts.TapRequest) {
+	scrubHeader := func(header *corev3.HeaderValue) {
+		fmt.Printf("\theaders are: %s:%s\n", header.GetKey(), header.GetValue())
+		header.Value = dataScrubber.ScrubDataString(header.Value)
 	}
+	scrubBody := func(body *tapv3.Body) {
+		dataScrubber.ScrubData(body.GetAsBytes())
+	}
+	var trace *tapv3.HttpBufferedTrace
+	trace = tapRequest.GetTraceData().GetHttpBufferedTrace()
+	request := trace.GetRequest()
+	response := trace.GetResponse()
+	fmt.Printf("Parsing request headers\n")
+	for _, header := range request.GetHeaders() {
+		scrubHeader(header)
+	}
+	fmt.Printf("Parsing response headers\n")
+	for _, header := range response.GetHeaders() {
+		scrubHeader(header)
+	}
+	scrubBody(request.GetBody())
+	scrubBody(response.GetBody())
 }
 
 func main() {
-	sopts := []grpc.ServerOption{grpc.MaxConcurrentStreams(1000)}
-	s := grpc.NewServer(sopts...)
-	sts.RegisterTapServiceServer(s, &server{})
+	flag.Parse()
+	dataScrubber.Init()
 
-	log.Printf("Listening on %s\n", *GrpcPort)
-	listener, err := net.Listen("tcp", *GrpcPort)
-	if err != nil {
-		log.Printf("error is: %s", err.Error())
+	handler := func(rw http.ResponseWriter, r *http.Request) {
+		log.Printf("got a request on %s\n", r.URL.Path)
+		traceData, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Printf("Error reading request traceData: %s", err.Error())
+			return
+		}
+		tapRequest := &sts.TapRequest{}
+		proto.Unmarshal(traceData, tapRequest)
+		scrubTapRequest(tapRequest)
+		tapRequestJson, err := json.MarshalIndent(tapRequest, "", "  ")
+		if err != nil {
+			log.Printf("Error marshalling proto message to json: %s", err.Error())
+		}
+		log.Printf("Message contents were: %s\n", tapRequestJson)
 	}
-	err = s.Serve(listener)
+
+	address := fmt.Sprintf(":%d", *HttpPort)
+	log.Printf("Listening on %s\n", address)
+	err := http.ListenAndServe(address, http.HandlerFunc(handler))
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 }
