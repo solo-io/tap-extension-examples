@@ -12,8 +12,8 @@ import (
 	tapv3 "github.com/envoyproxy/go-control-plane/envoy/data/tap/v3"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/solo-io/tap-extension-examples/tap-server-http/data_scrubber"
-	tap_service "github.com/solo-io/tap-extension-examples/tap-server-http/tap_grpc"
+	"github.com/solo-io/tap-extension-examples/pkg/data_scrubber"
+	tap_service "github.com/solo-io/tap-extension-examples/pkg/tap_service"
 )
 
 var (

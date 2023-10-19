@@ -8,7 +8,7 @@ import (
 	"log"
 	"net"
 
-	tap_service "github.com/solo-io/tap-extension-examples/tap-server-grpc/tap_grpc"
+	tap_service "github.com/solo-io/tap-extension-examples/pkg/tap_service"
 
 	"google.golang.org/grpc"
 )
