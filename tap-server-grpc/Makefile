@@ -1,4 +1,4 @@
-VERSION = 0.0.1
+VERSION = 0.0.2
 # OUTPUT_IMAGE = quay.io/solo-io/sample-tap-server:${VERSION}
 OUTPUT_IMAGE = gcr.io/solo-test-236622/sample-tap-server-grpc:${VERSION}
 

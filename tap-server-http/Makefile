@@ -1,4 +1,4 @@
-VERSION ?= 0.0.1
+VERSION ?= 0.0.2
 OUTPUT_IMAGE ?= gcr.io/solo-test-236622/sample-tap-server-http:${VERSION}
 
 all: sample-tap-server-docker
