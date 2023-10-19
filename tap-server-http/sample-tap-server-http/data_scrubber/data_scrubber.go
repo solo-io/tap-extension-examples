@@ -46,7 +46,7 @@ func (ds *DataScrubber) Init() {
 		regexp.MustCompile(CREDIT_CARD_TRACKER_REGEX_2),
 		regexp.MustCompile(CREDIT_CARD_TRACKER_REGEX_3),
 	}
-	ds.skipChars = []byte("-_ ")
+	ds.skipChars = []byte(`-_ "`)
 }
 
 // Return a new string with sensitive data removed.
