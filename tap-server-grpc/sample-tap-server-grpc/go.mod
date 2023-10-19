@@ -1,4 +1,4 @@
-module sample-tap-server
+module github.com/solo-io/tap-extension-examples/tap-server-grpc
 
 go 1.20
 

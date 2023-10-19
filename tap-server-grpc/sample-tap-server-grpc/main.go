@@ -8,7 +8,7 @@ import (
 	"log"
 	"net"
 
-	sts "sample-tap-server/tap_grpc"
+	tap_service "github.com/solo-io/tap-extension-examples/tap-server-grpc/tap_grpc"
 
 	"google.golang.org/grpc"
 )
@@ -19,7 +19,7 @@ var (
 
 type server struct{}
 
-func (s *server) ReportTap(srv sts.TapService_ReportTapServer) error {
+func (s *server) ReportTap(srv tap_service.TapService_ReportTapServer) error {
 	log.Printf("Starting to listen for requests")
 	ctx := srv.Context()
 	for {
@@ -49,7 +49,7 @@ func main() {
 	flag.Parse()
 	sopts := []grpc.ServerOption{grpc.MaxConcurrentStreams(1000)}
 	s := grpc.NewServer(sopts...)
-	sts.RegisterTapServiceServer(s, &server{})
+	tap_service.RegisterTapServiceServer(s, &server{})
 
 	address := fmt.Sprintf(":%d", *GrpcPort)
 	log.Printf("Listening on %s\n", address)
