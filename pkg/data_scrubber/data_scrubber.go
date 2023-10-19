@@ -2,6 +2,10 @@ package data_scrubber
 
 import (
 	"regexp"
+
+	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	tapv3 "github.com/envoyproxy/go-control-plane/envoy/data/tap/v3"
+	tap_service "github.com/solo-io/tap-extension-examples/pkg/tap_service"
 )
 
 type DataScrubber struct {
@@ -77,4 +81,25 @@ func (ds *DataScrubber) ScrubData(bodyData []byte) []byte {
 		}
 	}
 	return bodyData
+}
+
+func (ds *DataScrubber) ScrubTapRequest(tapRequest *tap_service.TapRequest) {
+	scrubHeader := func(header *corev3.HeaderValue) {
+		header.Value = ds.ScrubDataString(header.Value)
+	}
+	scrubBody := func(body *tapv3.Body) {
+		ds.ScrubData(body.GetAsBytes())
+	}
+	var trace *tapv3.HttpBufferedTrace
+	trace = tapRequest.GetTraceData().GetHttpBufferedTrace()
+	request := trace.GetRequest()
+	response := trace.GetResponse()
+	for _, header := range request.GetHeaders() {
+		scrubHeader(header)
+	}
+	for _, header := range response.GetHeaders() {
+		scrubHeader(header)
+	}
+	scrubBody(request.GetBody())
+	scrubBody(response.GetBody())
 }

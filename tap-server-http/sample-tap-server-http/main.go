@@ -8,8 +8,6 @@ import (
 	"log"
 	"net/http"
 
-	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
-	tapv3 "github.com/envoyproxy/go-control-plane/envoy/data/tap/v3"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/solo-io/tap-extension-examples/pkg/data_scrubber"
@@ -22,30 +20,6 @@ var (
 )
 
 type server struct{}
-
-func scrubTapRequest(tapRequest *tap_service.TapRequest) {
-	scrubHeader := func(header *corev3.HeaderValue) {
-		fmt.Printf("\theaders are: %s:%s\n", header.GetKey(), header.GetValue())
-		header.Value = dataScrubber.ScrubDataString(header.Value)
-	}
-	scrubBody := func(body *tapv3.Body) {
-		dataScrubber.ScrubData(body.GetAsBytes())
-	}
-	var trace *tapv3.HttpBufferedTrace
-	trace = tapRequest.GetTraceData().GetHttpBufferedTrace()
-	request := trace.GetRequest()
-	response := trace.GetResponse()
-	fmt.Printf("Parsing request headers\n")
-	for _, header := range request.GetHeaders() {
-		scrubHeader(header)
-	}
-	fmt.Printf("Parsing response headers\n")
-	for _, header := range response.GetHeaders() {
-		scrubHeader(header)
-	}
-	scrubBody(request.GetBody())
-	scrubBody(response.GetBody())
-}
 
 func main() {
 	flag.Parse()
@@ -60,7 +34,7 @@ func main() {
 		}
 		tapRequest := &tap_service.TapRequest{}
 		proto.Unmarshal(traceData, tapRequest)
-		scrubTapRequest(tapRequest)
+		dataScrubber.ScrubTapRequest(tapRequest)
 		tapRequestJson, err := json.MarshalIndent(tapRequest, "", "  ")
 		if err != nil {
 			log.Printf("Error marshalling proto message to json: %s", err.Error())

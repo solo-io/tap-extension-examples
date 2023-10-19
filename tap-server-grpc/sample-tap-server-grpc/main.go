@@ -8,13 +8,15 @@ import (
 	"log"
 	"net"
 
+	"github.com/solo-io/tap-extension-examples/pkg/data_scrubber"
 	tap_service "github.com/solo-io/tap-extension-examples/pkg/tap_service"
 
 	"google.golang.org/grpc"
 )
 
 var (
-	GrpcPort = flag.Int("p", 8080, "port")
+	GrpcPort     = flag.Int("p", 8080, "port")
+	dataScrubber data_scrubber.DataScrubber
 )
 
 type server struct{}
@@ -30,23 +32,25 @@ func (s *server) ReportTap(srv tap_service.TapService_ReportTapServer) error {
 		default:
 		}
 
-		req, err := srv.Recv()
+		tapRequest, err := srv.Recv()
 		if err == io.EOF {
 			// Client has closed the stream
 			return nil
 		}
 		log.Printf("got a request!")
-		req_json, err := json.Marshal(req)
+		dataScrubber.ScrubTapRequest(tapRequest)
+		tapRequestJson, err := json.MarshalIndent(tapRequest, "", "  ")
 		if err != nil {
-			log.Printf("Unable to convert message to json, raw body is %#v\n", req.GetTraceData())
-		} else {
-			log.Printf("request contents are: %s\n", req_json)
+			log.Printf("Error marshalling proto message to json: %s", err.Error())
 		}
+		log.Printf("Message contents were: %s\n", tapRequestJson)
 	}
 }
 
 func main() {
 	flag.Parse()
+	dataScrubber.Init()
+
 	sopts := []grpc.ServerOption{grpc.MaxConcurrentStreams(1000)}
 	s := grpc.NewServer(sopts...)
 	tap_service.RegisterTapServiceServer(s, &server{})
