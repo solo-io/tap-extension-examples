@@ -4,62 +4,36 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
-	"net"
 
 	"github.com/solo-io/tap-extension-examples/pkg/data_scrubber"
 	tap_service "github.com/solo-io/tap-extension-examples/pkg/tap_service"
-
+	tap_server_builder "github.com/solo-io/tap-extension-examples/tap-server-http/pkg"
 	"google.golang.org/grpc"
 )
 
 var (
-	GrpcPort     = flag.Int("p", 8080, "port")
-	dataScrubber data_scrubber.DataScrubber
+	GrpcPort = flag.Int("p", 8080, "port")
 )
 
-type server struct{}
+func main() {
+	flag.Parse()
+	var dataScrubber data_scrubber.DataScrubber
+	dataScrubber.Init()
+	tapMessages := make(chan tap_service.TapRequest)
 
-func (s *server) ReportTap(srv tap_service.TapService_ReportTapServer) error {
-	log.Printf("Starting to listen for requests")
-	ctx := srv.Context()
-	for {
-		select {
-		case <-ctx.Done():
-			log.Printf("End of stream\n")
-			return ctx.Err()
-		default:
-		}
+	listenAddress := fmt.Sprintf(":%d", *GrpcPort)
+	tapServerBuilder := tap_server_builder.NewTapServerBuilder().
+		WithDataScrubber(dataScrubber).
+		WithTapMessageChannel(tapMessages)
+	tapServer := tapServerBuilder.BuildGrpc([]grpc.ServerOption{grpc.MaxConcurrentStreams(1000)})
 
-		tapRequest, err := srv.Recv()
-		if err == io.EOF {
-			// Client has closed the stream
-			return nil
-		}
-		log.Printf("got a request!")
-		dataScrubber.ScrubTapRequest(tapRequest)
-		tapRequestJson, err := json.MarshalIndent(tapRequest, "", "  ")
+	go tapServer.Run(listenAddress)
+	for tapRequest := range tapMessages {
+		tapRequestJson, err := json.MarshalIndent(&tapRequest, "", "  ")
 		if err != nil {
 			log.Printf("Error marshalling proto message to json: %s", err.Error())
 		}
 		log.Printf("Message contents were: %s\n", tapRequestJson)
 	}
-}
-
-func main() {
-	flag.Parse()
-	dataScrubber.Init()
-
-	sopts := []grpc.ServerOption{grpc.MaxConcurrentStreams(1000)}
-	s := grpc.NewServer(sopts...)
-	tap_service.RegisterTapServiceServer(s, &server{})
-
-	address := fmt.Sprintf(":%d", *GrpcPort)
-	log.Printf("Listening on %s\n", address)
-	listener, err := net.Listen("tcp", address)
-	if err != nil {
-		log.Printf("error is: %s", err.Error())
-	}
-	err = s.Serve(listener)
 }

@@ -8,7 +8,7 @@ import (
 
 	"github.com/solo-io/tap-extension-examples/pkg/data_scrubber"
 	tap_service "github.com/solo-io/tap-extension-examples/pkg/tap_service"
-	http_tap_server "github.com/solo-io/tap-extension-examples/tap-server-http/pkg"
+	tap_server_builder "github.com/solo-io/tap-extension-examples/tap-server-http/pkg"
 )
 
 var (
@@ -20,17 +20,16 @@ type server struct{}
 func main() {
 	flag.Parse()
 	var dataScrubber data_scrubber.DataScrubber
-	tapMessages := make(chan tap_service.TapRequest)
 	dataScrubber.Init()
+	tapMessages := make(chan tap_service.TapRequest)
 
-	address := fmt.Sprintf(":%d", *HttpPort)
-	httpTapServerBuilder := http_tap_server.NewHttpTapServerBuilder().
+	listenAddress := fmt.Sprintf(":%d", *HttpPort)
+	httpTapServerBuilder := tap_server_builder.NewTapServerBuilder().
 		WithDataScrubber(dataScrubber).
-		WithListenAddress(address).
 		WithTapMessageChannel(tapMessages)
-	tapServer := http_tap_server.NewHttpTapServer(httpTapServerBuilder)
+	tapServer := httpTapServerBuilder.BuildHttp()
 
-	go tapServer.Run()
+	go tapServer.Run(listenAddress)
 	for tapRequest := range tapMessages {
 		tapRequestJson, err := json.MarshalIndent(&tapRequest, "", "  ")
 		if err != nil {
