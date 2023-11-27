@@ -8,13 +8,13 @@ sample-tap-server-http-docker:
 	docker build -t ${OUTPUT_IMAGE_HTTP} --build-arg=GO_MAIN_FILE=tap-server-http/cmd/main.go .
 
 sample-tap-server-grpc-docker:
-	docker build -t ${OUTPUT_IMAGE_GRPC} --build-arg GO_MAIN_FILE=tap-server-grpc/sample-tap-server-grpc/main.go .
+	docker build -t ${OUTPUT_IMAGE_GRPC} --build-arg GO_MAIN_FILE=tap-server-grpc/cmd/main.go .
 
 run-sample-tap-server-http:
 	cd tap-server-http/cmd/ && go mod tidy && go run main.go -p 9001
 
 run-sample-tap-server-grpc:
-	cd tap-server-grpc/sample-tap-server-grpc/ && go mod tidy && go run main.go -p 9001
+	cd tap-server-grpc/cmd/ && go mod tidy && go run main.go -p 9001
 
 run-sample-tap-server-http-docker: sample-tap-server-http-docker
 	docker run --rm -it -p 9001:8080 gcr.io/solo-test-236622/sample-tap-server-http:${VERSION}
