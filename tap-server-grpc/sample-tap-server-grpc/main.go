@@ -7,8 +7,8 @@ import (
 	"log"
 
 	"github.com/solo-io/tap-extension-examples/pkg/data_scrubber"
+	"github.com/solo-io/tap-extension-examples/pkg/tap_server_builder"
 	tap_service "github.com/solo-io/tap-extension-examples/pkg/tap_service"
-	tap_server_builder "github.com/solo-io/tap-extension-examples/tap-server-http/pkg"
 	"google.golang.org/grpc"
 )
 
