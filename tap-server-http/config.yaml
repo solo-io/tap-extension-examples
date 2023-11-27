@@ -1,35 +1,34 @@
 apiVersion: gloo.solo.io/v1
 kind: Upstream
 metadata:
-  name: echo-server
+  name: httpbin
   namespace: gloo-system
 spec:
-  useHttp2: true
   static:
     hosts:
-    - addr: echo-server
+    - addr: httpbin
       port: 8080
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: echo-server
-  name: echo-server
+    app: httpbin
+  name: httpbin
   namespace: gloo-system
 spec:
   selector:
     matchLabels:
-      app: echo-server
+      app: httpbin
   replicas: 1
   template:
     metadata:
       labels:
-        app: echo-server
+        app: httpbin
     spec:
       containers:
-      - image: jmalloc/echo-server
-        name: echo-server
+      - image: kennethreitz/httpbin
+        name: httpbin
         env:
         - name: LOG_HTTP_HEADERS
           value: "true"
@@ -42,16 +41,17 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: echo-server
+  name: httpbin
   namespace: gloo-system
   labels:
-    service: echo-server
+    service: httpbin
 spec:
   ports:
   - port: 8080
+    targetPort: 80
     protocol: TCP
   selector:
-    app: echo-server
+    app: httpbin
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -118,7 +118,7 @@ spec:
 apiVersion: gateway.solo.io/v1
 kind: VirtualService
 metadata:
-  name: headers-to-body
+  name: virtual-service
   namespace: gloo-system
 spec:
   virtualHost:
@@ -130,7 +130,7 @@ spec:
       routeAction:
         single:
           upstream:
-            name: postman-echo
+            name: httpbin
             namespace: gloo-system
       options:
         autoHostRewrite: true
@@ -164,12 +164,11 @@ metadata:
   namespace: gloo-system
 spec:
   tap:
-    staticConfig:
-      outputConfig:
-        sinks:
-        - httpService:
-            tapServer:
-              # name: echo-server
-              name: sample-tap-server-http
-              namespace: gloo-system
-            timeout: '20s'
+    # staticConfig:
+    #   outputConfig:
+   sinks:
+   - httpService:
+       tapServer:
+         name: sample-tap-server-http
+         namespace: gloo-system
+       timeout: '20s'
