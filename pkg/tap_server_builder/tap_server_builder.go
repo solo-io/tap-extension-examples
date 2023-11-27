@@ -1,6 +1,7 @@
 package tap_server_builder
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,16 +16,19 @@ import (
 
 type TapServer interface {
 	Run(listenAddress string)
+	Stop() error
 }
 
 type httpTapServerImpl struct {
-	handler func(http.ResponseWriter, *http.Request)
+	handler    func(http.ResponseWriter, *http.Request)
+	httpServer http.Server
 }
 
 type grpcTapServerImpl struct {
 	tapMessages    chan tap_service.TapRequest
 	dataScrubber   data_scrubber.DataScrubber
 	grpcServerOpts []grpc.ServerOption
+	grpcServer     *grpc.Server
 }
 
 func (tapServerImpl *grpcTapServerImpl) ReportTap(srv tap_service.TapService_ReportTapServer) error {
@@ -99,19 +103,39 @@ func (tapServerBuilder *tapServerBuilder) BuildGrpc(grpcServerOpts []grpc.Server
 
 func (tap_server *httpTapServerImpl) Run(listenAddress string) {
 	log.Printf("Listening on %s\n", listenAddress)
-	err := http.ListenAndServe(listenAddress, http.HandlerFunc(tap_server.handler))
+	tap_server.httpServer.Addr = listenAddress
+	tap_server.httpServer.Handler = http.HandlerFunc(tap_server.handler)
+	err := tap_server.httpServer.ListenAndServe()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 }
 
+func (tap_server *httpTapServerImpl) Stop() error {
+	if tap_server == nil {
+		return nil
+	}
+	return tap_server.httpServer.Shutdown(context.Background())
+}
+
 func (tap_server *grpcTapServerImpl) Run(listenAddress string) {
 	log.Printf("Listening on %s\n", listenAddress)
-	server := grpc.NewServer(tap_server.grpcServerOpts...)
-	tap_service.RegisterTapServiceServer(server, tap_server)
+	tap_server.grpcServer = grpc.NewServer(tap_server.grpcServerOpts...)
+	tap_service.RegisterTapServiceServer(tap_server.grpcServer, tap_server)
 	listener, err := net.Listen("tcp", listenAddress)
 	if err != nil {
 		log.Fatal("error starting server", err)
 	}
-	log.Fatal(server.Serve(listener))
+	log.Fatal(tap_server.grpcServer.Serve(listener))
+}
+
+func (tap_server *grpcTapServerImpl) Stop() error {
+	if tap_server == nil {
+		return nil
+	}
+	if tap_server.grpcServer == nil {
+		return nil
+	}
+	tap_server.grpcServer.Stop()
+	return nil
 }
