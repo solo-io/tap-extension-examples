@@ -105,8 +105,7 @@ func (tap_server *httpTapServerImpl) Run(listenAddress string) {
 	log.Printf("Listening on %s\n", listenAddress)
 	tap_server.httpServer.Addr = listenAddress
 	tap_server.httpServer.Handler = http.HandlerFunc(tap_server.handler)
-	err := tap_server.httpServer.ListenAndServe()
-	if err != nil {
+	if err := tap_server.httpServer.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatal(err.Error())
 	}
 }
