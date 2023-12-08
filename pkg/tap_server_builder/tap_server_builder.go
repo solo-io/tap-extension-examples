@@ -26,7 +26,7 @@ type httpTapServerImpl struct {
 
 type grpcTapServerImpl struct {
 	tapMessages    chan tap_service.TapRequest
-	dataScrubber   data_scrubber.DataScrubber
+	dataScrubber   *data_scrubber.DataScrubber
 	grpcServerOpts []grpc.ServerOption
 	grpcServer     *grpc.Server
 }
@@ -48,7 +48,9 @@ func (tapServerImpl *grpcTapServerImpl) ReportTap(srv tap_service.TapService_Rep
 			return nil
 		}
 		log.Printf("got a tap report!")
-		tapServerImpl.dataScrubber.ScrubTapRequest(tapRequest)
+		if tapServerImpl.dataScrubber != nil {
+			tapServerImpl.dataScrubber.ScrubTapRequest(tapRequest)
+		}
 		tapServerImpl.tapMessages <- *tapRequest
 	}
 }
@@ -57,8 +59,9 @@ type tapServerBuilder struct {
 	// channel where received tap requests will be written
 	tapMessages chan tap_service.TapRequest
 	// data scrubber - can be run on TapRequest objects to purge sensitive data
-	// prior to being written on tapMessages
-	dataScrubber data_scrubber.DataScrubber
+	// prior to being written on tapMessages. can be set to nil to disable this
+	// functionality
+	dataScrubber *data_scrubber.DataScrubber
 }
 
 func NewTapServerBuilder() *tapServerBuilder {
@@ -70,7 +73,7 @@ func (tapServerBuilder *tapServerBuilder) WithTapMessageChannel(tapMessages chan
 	return tapServerBuilder
 }
 
-func (tapServerBuilder *tapServerBuilder) WithDataScrubber(dataScrubber data_scrubber.DataScrubber) *tapServerBuilder {
+func (tapServerBuilder *tapServerBuilder) WithDataScrubber(dataScrubber *data_scrubber.DataScrubber) *tapServerBuilder {
 	tapServerBuilder.dataScrubber = dataScrubber
 	return tapServerBuilder
 }
@@ -85,7 +88,9 @@ func (tapServerBuilder *tapServerBuilder) BuildHttp() TapServer {
 		}
 		tapRequest := &tap_service.TapRequest{}
 		proto.Unmarshal(traceData, tapRequest)
-		tapServerBuilder.dataScrubber.ScrubTapRequest(tapRequest)
+		if tapServerBuilder.dataScrubber != nil {
+			tapServerBuilder.dataScrubber.ScrubTapRequest(tapRequest)
+		}
 		tapServerBuilder.tapMessages <- *tapRequest
 	}
 	return &httpTapServerImpl{
