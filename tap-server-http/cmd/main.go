@@ -25,7 +25,7 @@ func main() {
 
 	listenAddress := fmt.Sprintf(":%d", *HttpPort)
 	httpTapServerBuilder := tap_server_builder.NewTapServerBuilder().
-		WithDataScrubber(dataScrubber).
+		WithDataScrubber(&dataScrubber).
 		WithTapMessageChannel(tapMessages)
 	tapServer := httpTapServerBuilder.BuildHttp()
 

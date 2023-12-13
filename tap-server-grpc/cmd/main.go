@@ -24,7 +24,7 @@ func main() {
 
 	listenAddress := fmt.Sprintf(":%d", *GrpcPort)
 	tapServerBuilder := tap_server_builder.NewTapServerBuilder().
-		WithDataScrubber(dataScrubber).
+		WithDataScrubber(&dataScrubber).
 		WithTapMessageChannel(tapMessages)
 	tapServer := tapServerBuilder.BuildGrpc([]grpc.ServerOption{grpc.MaxConcurrentStreams(1000)})
 
