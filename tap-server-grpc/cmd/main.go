@@ -1,28 +1,27 @@
 package main
 
 import (
-	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 
 	"github.com/solo-io/tap-extension-examples/pkg/data_scrubber"
+	"github.com/solo-io/tap-extension-examples/pkg/flags"
 	"github.com/solo-io/tap-extension-examples/pkg/tap_server_builder"
 	tap_service "github.com/solo-io/tap-extension-examples/pkg/tap_service"
 	"google.golang.org/grpc"
 )
 
-var (
-	GrpcPort = flag.Int("p", 8080, "port")
-)
-
 func main() {
-	flag.Parse()
+	config, err := flags.ParseFlags()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	var dataScrubber data_scrubber.DataScrubber
 	dataScrubber.Init()
 	tapMessages := make(chan tap_service.TapRequest)
 
-	listenAddress := fmt.Sprintf(":%d", *GrpcPort)
+	listenAddress := fmt.Sprintf(":%d", config.Port)
 	tapServerBuilder := tap_server_builder.NewTapServerBuilder().
 		WithDataScrubber(&dataScrubber).
 		WithTapMessageChannel(tapMessages)
@@ -30,10 +29,6 @@ func main() {
 
 	go tapServer.Run(listenAddress)
 	for tapRequest := range tapMessages {
-		tapRequestJson, err := json.MarshalIndent(&tapRequest, "", "  ")
-		if err != nil {
-			log.Printf("Error marshalling proto message to json: %s", err.Error())
-		}
-		log.Printf("Message contents were: %s\n", tapRequestJson)
+		config.OutputFormatter(&tapRequest)
 	}
 }
