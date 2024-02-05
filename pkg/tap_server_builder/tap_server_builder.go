@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/solo-io/tap-extension-examples/pkg/data_scrubber"
 	tap_service "github.com/solo-io/tap-extension-examples/pkg/tap_service"
@@ -26,6 +27,7 @@ type httpTapServerImpl struct {
 type grpcTapServerImpl struct {
 	tapMessages    chan tap_service.TapRequest
 	dataScrubber   *data_scrubber.DataScrubber
+	messageDelay   *time.Duration
 	grpcServerOpts []grpc.ServerOption
 	grpcServer     *grpc.Server
 }
@@ -50,6 +52,7 @@ func (tapServerImpl *grpcTapServerImpl) ReportTap(srv tap_service.TapService_Rep
 		if tapServerImpl.dataScrubber != nil {
 			tapServerImpl.dataScrubber.ScrubTapRequest(tapRequest)
 		}
+		time.Sleep(*tapServerImpl.messageDelay)
 		tapServerImpl.tapMessages <- *tapRequest
 	}
 }
@@ -61,6 +64,8 @@ type tapServerBuilder struct {
 	// prior to being written on tapMessages. can be set to nil to disable this
 	// functionality
 	dataScrubber *data_scrubber.DataScrubber
+	// delay between acknowledgement of trace messages
+	messageDelay *time.Duration
 }
 
 func NewTapServerBuilder() *tapServerBuilder {
@@ -74,6 +79,11 @@ func (tapServerBuilder *tapServerBuilder) WithTapMessageChannel(tapMessages chan
 
 func (tapServerBuilder *tapServerBuilder) WithDataScrubber(dataScrubber *data_scrubber.DataScrubber) *tapServerBuilder {
 	tapServerBuilder.dataScrubber = dataScrubber
+	return tapServerBuilder
+}
+
+func (tapServerBuilder *tapServerBuilder) WithMessageDelay(messageDelay *time.Duration) *tapServerBuilder {
+	tapServerBuilder.messageDelay = messageDelay
 	return tapServerBuilder
 }
 
@@ -91,6 +101,9 @@ func (tapServerBuilder *tapServerBuilder) BuildHttp() TapServer {
 			tapServerBuilder.dataScrubber.ScrubTapRequest(tapRequest)
 		}
 		tapServerBuilder.tapMessages <- *tapRequest
+		if tapServerBuilder.messageDelay != nil {
+			time.Sleep(*tapServerBuilder.messageDelay)
+		}
 	}
 	return &httpTapServerImpl{
 		handler: handler,
@@ -101,6 +114,7 @@ func (tapServerBuilder *tapServerBuilder) BuildGrpc(grpcServerOpts []grpc.Server
 	return &grpcTapServerImpl{
 		tapMessages:    tapServerBuilder.tapMessages,
 		dataScrubber:   tapServerBuilder.dataScrubber,
+		messageDelay:   tapServerBuilder.messageDelay,
 		grpcServerOpts: grpcServerOpts,
 	}
 }

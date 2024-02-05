@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"time"
 
 	tap_service "github.com/solo-io/tap-extension-examples/pkg/tap_service"
 )
@@ -13,11 +14,14 @@ type printMessageFuncType func(*tap_service.TapRequest)
 type Flags struct {
 	Port            int
 	OutputFormatter printMessageFuncType
+	MessageDelay    *time.Duration
 }
 
 func ParseFlags() (*Flags, error) {
 	port := flag.Int("p", 8080, "port")
 	outputFormat := flag.String("output-format", "none", "which output format to use (json/none)")
+	messageDelayText := `delay between acknowledgement of trace messages; can be used to simulate a slow tap server`
+	messageDelay := flag.Duration("message-delay", 0, messageDelayText)
 	flag.Parse()
 
 	var printMessageFunc printMessageFuncType
@@ -39,5 +43,6 @@ func ParseFlags() (*Flags, error) {
 	return &Flags{
 		Port:            *port,
 		OutputFormatter: printMessageFunc,
+		MessageDelay:    messageDelay,
 	}, nil
 }
