@@ -12,13 +12,33 @@ import (
 )
 
 var (
-	HttpPort = flag.Int("p", 8080, "port")
+	HttpPort     = flag.Int("p", 8080, "port")
+	OutputFormat = flag.String("output-format", "none", "which output format to use (json/none)")
 )
 
 type server struct{}
+type printMessageFuncType func(*tap_service.TapRequest)
 
 func main() {
 	flag.Parse()
+
+	// TODO deduplicate this from grpc/http main.go
+	var printMessageFunc printMessageFuncType
+	switch *OutputFormat {
+	case "none":
+		printMessageFunc = func(*tap_service.TapRequest) {}
+	case "json":
+		printMessageFunc = func(tapRequest *tap_service.TapRequest) {
+			tapRequestJson, err := json.MarshalIndent(&tapRequest, "", "  ")
+			if err != nil {
+				log.Printf("Error marshalling proto message to json: %s", err.Error())
+			}
+			log.Printf("Message contents were: %s\n", tapRequestJson)
+		}
+	default:
+		log.Fatalf("invalid value for --output-format: %s", *OutputFormat)
+	}
+
 	var dataScrubber data_scrubber.DataScrubber
 	dataScrubber.Init()
 	tapMessages := make(chan tap_service.TapRequest)
@@ -31,10 +51,6 @@ func main() {
 
 	go tapServer.Run(listenAddress)
 	for tapRequest := range tapMessages {
-		tapRequestJson, err := json.MarshalIndent(&tapRequest, "", "  ")
-		if err != nil {
-			log.Printf("Error marshalling proto message to json: %s", err.Error())
-		}
-		log.Printf("Message contents were: %s\n", tapRequestJson)
+		printMessageFunc(&tapRequest)
 	}
 }
