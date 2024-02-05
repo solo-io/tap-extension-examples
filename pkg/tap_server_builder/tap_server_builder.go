@@ -3,7 +3,6 @@ package tap_server_builder
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -81,7 +80,7 @@ func (tapServerBuilder *tapServerBuilder) WithDataScrubber(dataScrubber *data_sc
 func (tapServerBuilder *tapServerBuilder) BuildHttp() TapServer {
 	handler := func(rw http.ResponseWriter, r *http.Request) {
 		log.Printf("got a request on %s\n", r.URL.Path)
-		traceData, err := ioutil.ReadAll(r.Body)
+		traceData, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Printf("Error reading request traceData: %s", err.Error())
 			return
